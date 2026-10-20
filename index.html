@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8fafc">
+  <title>ShootLogger — Production Event Logging</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">
+          <i data-lucide="clapperboard"></i>
+        </span>
+        <div class="brand-text">
+          <h1>ShootLogger</h1>
+          <p>Keep track of the moments worth finding.</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="button button-outline" id="exportBtn" title="Download all logged events as a CSV file">
+          <i data-lucide="download"></i>
+          <span>Export CSV</span>
+        </button>
+        <button class="button button-primary" id="openCreateModalBtn" title="Log a new moment">
+          <i data-lucide="plus"></i>
+          <span>Create New Log</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="dashboard-content">
+      <!-- Refined KPI Stats Section with (i) tooltips -->
+      <section class="stats-grid" aria-label="Shoot statistics">
+        <article class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title-group">
+              <span class="stat-icon stat-icon-primary"><i data-lucide="list-checks"></i></span>
+              <span class="stat-label">Total Events</span>
+            </div>
+            <span class="info" title="Total number of events saved in this browser"><i data-lucide="info"></i></span>
+          </div>
+          <div class="stat-body">
+            <strong id="totalCount" class="stat-number">0</strong>
+            <span class="stat-subtext">Moments captured during shoot</span>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title-group">
+              <span class="stat-icon stat-icon-accent"><i data-lucide="video"></i></span>
+              <span class="stat-label">Camera Sources</span>
+            </div>
+            <span class="info" title="Number of unique camera or video source names"><i data-lucide="info"></i></span>
+          </div>
+          <div class="stat-body">
+            <strong id="cameraCount" class="stat-number">0</strong>
+            <span class="stat-subtext">Active camera feeds & devices</span>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title-group">
+              <span class="stat-icon stat-icon-success"><i data-lucide="calendar-check"></i></span>
+              <span class="stat-label">Today's Logs</span>
+            </div>
+            <span class="info" title="Events added to this browser today"><i data-lucide="info"></i></span>
+          </div>
+          <div class="stat-body">
+            <strong id="todayCount" class="stat-number">0</strong>
+            <span class="stat-subtext">Events logged during today's session</span>
+          </div>
+        </article>
+      </section>
+
+      <!-- Logs Section (Table-Like Compact Layout) -->
+      <section class="card events-card">
+        <!-- Events Card Header -->
+        <div class="events-header">
+          <div class="events-header-info">
+            <div class="events-title-row">
+              <h2>Event Log</h2>
+              <span id="resultsCountBadge" class="results-badge">0 events</span>
+            </div>
+            <p id="resultsSubtext">View, search and manage all captured shoot markers.</p>
+          </div>
+          <div class="events-header-actions">
+            <button class="button button-ghost" id="sampleDataBtn" title="Load sample shoot events for testing">
+              <i data-lucide="sparkles"></i>
+              <span>Sample Events</span>
+            </button>
+            <button class="button button-danger" id="clearBtn" title="Permanently delete every event saved in this browser">
+              <i data-lucide="trash-2"></i>
+              <span>Delete all</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="filter-wrapper">
+          <div class="search-bar-row">
+            <div class="search-field">
+              <i data-lucide="search" class="search-icon"></i>
+              <input id="searchInput" type="search" placeholder="Search by title, notes, camera, or timecode..." aria-label="Search events" autocomplete="off">
+              <button id="clearSearchBtn" class="clear-search-btn" title="Clear search" aria-label="Clear search" hidden>
+                <i data-lucide="x"></i>
+              </button>
+              <kbd class="search-kbd" title="Search shortcut">⌕</kbd>
+            </div>
+          </div>
+
+          <div class="filters-toolbar">
+            <div class="filter-controls-group">
+              <!-- Event Type Filter -->
+              <div class="filter-pill-control">
+                <i data-lucide="tag" class="control-icon"></i>
+                <label for="typeFilter" class="sr-only">Filter by event type</label>
+                <select id="typeFilter" aria-label="Filter by event type">
+                  <option value="all">All Types</option>
+                  <option value="Highlight">Highlight</option>
+                  <option value="Best take">Best take</option>
+                  <option value="Funny moment">Funny moment</option>
+                  <option value="Failed attempt">Failed attempt</option>
+                  <option value="Retake">Retake</option>
+                  <option value="Safety / continuity">Safety / continuity</option>
+                  <option value="Other">Other</option>
+                </select>
+                <i data-lucide="chevron-down" class="dropdown-icon"></i>
+              </div>
+
+              <!-- Camera Filter -->
+              <div class="filter-pill-control">
+                <i data-lucide="video" class="control-icon"></i>
+                <label for="cameraFilter" class="sr-only">Filter by camera</label>
+                <select id="cameraFilter" aria-label="Filter by camera">
+                  <option value="all">All Cameras</option>
+                </select>
+                <i data-lucide="chevron-down" class="dropdown-icon"></i>
+              </div>
+
+              <!-- Date Range Filter -->
+              <div class="filter-pill-control">
+                <i data-lucide="calendar" class="control-icon"></i>
+                <label for="dateFilter" class="sr-only">Filter by date</label>
+                <select id="dateFilter" aria-label="Filter by date">
+                  <option value="all">All Dates</option>
+                  <option value="today">Today</option>
+                  <option value="7days">Last 7 days</option>
+                  <option value="30days">Last 30 days</option>
+                </select>
+                <i data-lucide="chevron-down" class="dropdown-icon"></i>
+              </div>
+
+              <!-- Sort Filter -->
+              <div class="filter-pill-control sort-control">
+                <i data-lucide="arrow-down-up" class="control-icon"></i>
+                <label for="sortFilter" class="sr-only">Sort events</label>
+                <select id="sortFilter" aria-label="Sort events">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="timestamp">Timecode A–Z</option>
+                </select>
+                <i data-lucide="chevron-down" class="dropdown-icon"></i>
+              </div>
+            </div>
+
+            <!-- Clear filters button -->
+            <button id="resetBtn" class="reset-filters-btn" title="Reset all search queries and filters">
+              <i data-lucide="rotate-ccw"></i>
+              <span>Clear filters</span>
+              <span id="activeFilterBadge" class="filter-count-badge" hidden>0</span>
+            </button>
+          </div>
+
+          <!-- Active Filter Tags Row -->
+          <div id="activeTagsRow" class="active-tags-row" hidden>
+            <span class="active-tags-label">Active:</span>
+            <div id="activeTagsContainer" class="active-tags-container"></div>
+          </div>
+        </div>
+
+        <!-- Table Container (Scene column completely removed) -->
+        <div class="log-table-container">
+          <div class="log-table-header" id="logTableHeader">
+            <span class="th-cell th-type" title="Event category">Type</span>
+            <span class="th-cell th-time">Timecode</span>
+            <span class="th-cell th-title">Event Title & Notes</span>
+            <span class="th-cell th-camera">Camera</span>
+            <span class="th-cell th-date">Logged</span>
+            <span class="th-cell th-actions">Actions</span>
+          </div>
+
+          <!-- Log Table Body -->
+          <div id="logList" class="log-table-body" role="table" aria-label="Logged shoot events"></div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" hidden>
+          <div class="empty-icon-wrap">
+            <i data-lucide="clapperboard"></i>
+          </div>
+          <h3 id="emptyStateTitle">No events yet</h3>
+          <p id="emptyStateText">Add your first moment using the button above or load sample events to explore the logger.</p>
+          <div class="empty-state-actions">
+            <button class="button button-primary" id="emptyStateCreateBtn">
+              <i data-lucide="plus"></i>
+              <span>Create New Log</span>
+            </button>
+            <button class="button button-outline" id="sampleBtn">
+              <i data-lucide="sparkles"></i>
+              <span>Load sample events</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pagination Section -->
+        <div id="paginationContainer" class="pagination-container">
+          <div class="pagination-info">
+            <span id="paginationRangeText">Showing 1–10 of 0 events</span>
+          </div>
+          <nav class="pagination-nav" aria-label="Event log pages">
+            <button id="prevPageBtn" class="page-nav-btn" aria-label="Previous page" title="Previous page">
+              <i data-lucide="chevron-left"></i>
+              <span>Prev</span>
+            </button>
+            <div id="pageNumbersContainer" class="page-numbers-container"></div>
+            <button id="nextPageBtn" class="page-nav-btn" aria-label="Next page" title="Next page">
+              <span>Next</span>
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Events Footer -->
+        <div class="events-footer">
+          <div class="footer-badge">
+            <i data-lucide="shield-check"></i>
+            <span>Local & Private · Stored in your browser</span>
+          </div>
+          <div class="footer-tip">
+            <span>Tip: Export CSV to share markers with your editor (Premiere, DaVinci, FCPX).</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="page-footer">
+      ShootLogger · Professional Shot & Moment Logger · Works 100% offline
+    </footer>
+  </div>
+
+  <!-- Create / Edit Log Modal (Scene removed, reduced font weights, 2px radius) -->
+  <div id="logModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-header-title">
+          <div class="modal-header-icon">
+            <i data-lucide="clapperboard" id="modalHeaderIcon"></i>
+          </div>
+          <div>
+            <h2 id="modalTitle">Create New Log</h2>
+            <p id="modalSubtitle">Capture a moment with details for the editor.</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeModalBtn" aria-label="Close modal" title="Close (Esc)">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="logForm" class="modal-form" novalidate>
+        <input type="hidden" id="editLogId" value="">
+
+        <div class="form-group">
+          <label for="title" class="form-label">
+            <span>Event title</span>
+            <span class="required-star">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="title" 
+            class="form-input form-input-lg" 
+            required 
+            maxlength="120" 
+            placeholder="e.g. Host cracks up during intro / Balloon bursts" 
+            autocomplete="off"
+          >
+          <span class="input-hint">Clear, descriptive name that the editor can spot instantly.</span>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="camera" class="form-label">
+              <span>Camera / Video source</span>
+              <span class="required-star">*</span>
+            </label>
+            <div class="input-with-icon">
+              <i data-lucide="video" class="input-icon"></i>
+              <input 
+                type="text" 
+                id="camera" 
+                class="form-input" 
+                required 
+                maxlength="80" 
+                placeholder="e.g. Main Cam, Cam A, Drone" 
+                autocomplete="off"
+              >
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="timestamp" class="form-label">
+              <span>Timecode / Timestamp</span>
+              <span class="required-star">*</span>
+            </label>
+            <div class="input-with-icon">
+              <i data-lucide="clock-3" class="input-icon"></i>
+              <input 
+                type="text" 
+                id="timestamp" 
+                class="form-input" 
+                required 
+                maxlength="20" 
+                placeholder="00:12:34 or 1:45" 
+                title="Enter the timecode shown on camera monitor or audio recorder"
+                autocomplete="off"
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="type" class="form-label">
+            <span>Event type</span>
+          </label>
+          <div class="input-with-icon select-wrap">
+            <i data-lucide="tag" class="input-icon"></i>
+            <select id="type" class="form-select">
+              <option value="Highlight">Highlight</option>
+              <option value="Best take">Best take</option>
+              <option value="Funny moment">Funny moment</option>
+              <option value="Failed attempt">Failed attempt</option>
+              <option value="Retake">Retake</option>
+              <option value="Safety / continuity">Safety / continuity</option>
+              <option value="Other">Other</option>
+            </select>
+            <i data-lucide="chevron-down" class="select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="notes" class="form-label">
+            <span>Notes for editor</span>
+            <span class="optional-tag">Optional</span>
+          </label>
+          <textarea 
+            id="notes" 
+            class="form-textarea" 
+            rows="3" 
+            maxlength="600" 
+            placeholder="Add context, angles to check, audio flags, or what made this take stand out..."
+          ></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <div class="form-saved-hint">
+            <i data-lucide="hard-drive"></i>
+            <span>Saves automatically to local storage</span>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="button button-outline" id="cancelModalBtn">Cancel</button>
+            <button type="submit" class="button button-primary" id="saveLogBtn">
+              <i data-lucide="plus" id="saveBtnIcon"></i>
+              <span id="saveBtnText">Save Event</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
